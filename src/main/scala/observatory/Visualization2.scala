@@ -53,13 +53,11 @@ object Visualization2 extends Visualization2Interface {
     yield Tile(x, y, leftTopTile.zoom)
 
     def createPixel(targetLoc: Location): Pixel = {
-      val latAsInt = targetLoc.lat.toInt
-      val lonAsInt = targetLoc.lon.toInt
-//      val (topLeft, bottomRight) = targetLoc.getGridSquare()
+      val (topLeft, bottomRight) = targetLoc.getGridSquare()
       val predictedTemperature = bilinearInterpolation(
-        CellPoint(targetLoc.lon - lonAsInt, targetLoc.lat - latAsInt),
-        grid(GridLocation(latAsInt, lonAsInt)), grid(GridLocation(latAsInt + 1, lonAsInt)),
-        grid(GridLocation(latAsInt, lonAsInt + 1)), grid(GridLocation(latAsInt + 1, lonAsInt + 1))
+        CellPoint(targetLoc.lon - topLeft.lon,  topLeft.lat - targetLoc.lat),
+        grid(topLeft), grid(GridLocation(bottomRight.lat, topLeft.lon)),
+        grid(GridLocation(topLeft.lat, bottomRight.lon)), grid(bottomRight)
       )
       val interpolatedColor = interpolateColor(colors, predictedTemperature)
       toPixel(interpolatedColor, 127)

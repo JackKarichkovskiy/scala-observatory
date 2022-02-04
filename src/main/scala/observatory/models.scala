@@ -1,7 +1,5 @@
 package observatory
 
-//import com.sksamuel.scrimage.Pixel
-
 /**
   * Introduced in Week 1. Represents a location on the globe.
   *
@@ -30,34 +28,20 @@ case class Location(lat: Double, lon: Double) {
   }
 
   def getGridSquare(): (GridLocation, GridLocation) = {
-    val ceiledLat = Math.ceil(lat).toInt
-    val x0 = if (ceiledLat == -MAX_LAT) ceiledLat + 1 else ceiledLat
-    val x1 = if (ceiledLat == -MAX_LAT) MAX_LAT else x0 - 1
+    val ceiledLat = lat.ceil.toInt
+    val lat0 = if (ceiledLat == -MAX_LAT) ceiledLat + 1 else ceiledLat
+    val lat1 = if (lat0 == -MAX_LAT + 1) MAX_LAT else lat0 - 1
 
     val flooredLon = Math.floor(lon).toInt
-    val y0 = if(flooredLon == MAX_LON) flooredLon - 1 else flooredLon
-    val y1 = if(flooredLon == MAX_LON) -MAX_LON else y0 + 1
+    val lon0 = if(flooredLon == MAX_LON) flooredLon - 1 else flooredLon
+    val lon1 = if(lon0 == MAX_LON - 1) -MAX_LON else lon0 + 1
 
     (
-      GridLocation(x0, y0),
-      GridLocation(x1, y1)
+      GridLocation(lat0, lon0),
+      GridLocation(lat1, lon1)
     )
   }
 
-//  def getGridSquareOld(): (GridLocation, GridLocation) = {
-//    val ceiledLat = Math.ceil(lat).toInt
-//    val x0 = if (ceiledLat == -MAX_LAT) ceiledLat + 1 else ceiledLat
-//    val x1 = if (ceiledLat == -MAX_LAT) MAX_LAT else x0 - 1
-//
-//    val flooredLon = Math.floor(lon).toInt
-//    val y0 = if(flooredLon == MAX_LON) flooredLon - 1 else flooredLon
-//    val y1 = if(flooredLon == MAX_LON) -MAX_LON else y0 + 1
-//
-//    (
-//      GridLocation(x0, y0),
-//      GridLocation(x1, y1)
-//    )
-//  }
 }
 /**
   * Introduced in Week 3. Represents a tiled web map tile.

@@ -1,14 +1,13 @@
 package observatory
 
 import org.apache.spark.rdd.RDD
-import SparkInstance.sparkContext
-
-import scala.collection.parallel.ParIterable
 
 /**
   * 4th milestone: value-added information
   */
 object Manipulation extends ManipulationInterface {
+
+  var cache = Map.empty[Iterable[(Location, Temperature)], Map[GridLocation, Temperature]]
 
   /**
     * @param temperatures Known temperatures
@@ -16,14 +15,23 @@ object Manipulation extends ManipulationInterface {
     *         returns the predicted temperature at this location
     */
   def makeGrid(temperatures: Iterable[(Location, Temperature)]): GridLocation => Temperature = {
-    System.gc()
-    val cache = collection.mutable.Map.empty[GridLocation, Temperature]
-    gridLoc =>
-      cache.getOrElse(gridLoc, {
-        val temp = Visualization.predictTemperature(temperatures, gridLoc.toLocation())
-        cache update(gridLoc, temp)
-        cache(gridLoc)
-      })
+    val cachedGrid = cache.getOrElse(temperatures, {
+      val newGrid = generateGrid(temperatures)
+      cache += temperatures -> newGrid
+      newGrid
+    })
+    gridLoc => {
+      cachedGrid(gridLoc)
+    }
+  }
+
+  def generateGrid(temperatures: Iterable[(Location, Temperature)]): Map[GridLocation, Temperature] = {
+    {
+      for {
+        lat <- -89 to 90
+        lon <- -180 to 179
+      } yield GridLocation(lat, lon) -> Visualization.predictTemperature(temperatures, Location(lat, lon))
+    }.toMap
   }
 
   /**
@@ -32,9 +40,20 @@ object Manipulation extends ManipulationInterface {
     * @return A function that, given a latitude and a longitude, returns the average temperature at this location
     */
   def average(temperatures: Iterable[Iterable[(Location, Temperature)]]): GridLocation => Temperature = {
-//    System.gc()
-//    averageRdd(sparkContext.parallelize(temperatures.toSeq))
-    ???
+    averagePar(temperatures)
+  }
+
+  def averagePar(temperatures: Iterable[Iterable[(Location, Temperature)]]): GridLocation => Temperature = {
+    val gridsByYear = temperatures.map(makeGrid)
+    println("gridsByYear created")
+
+    gridLoc => {
+      val sum = gridsByYear.par.map(_(gridLoc)).aggregate((0.0, 0))(
+        (acc, temp) => (acc._1 + temp, acc._2 + 1),
+        (acc1, acc2) => (acc1._1 + acc2._1, acc1._2 + acc2._2)
+      )
+      sum._1 / sum._2
+    }
   }
 
   def averageRdd(temperaturesRdd: RDD[Iterable[(Location, Temperature)]]): GridLocation => Temperature = {
@@ -47,27 +66,14 @@ object Manipulation extends ManipulationInterface {
     }
   }
 
-  def averageRdd2(temperaturesRdd: RDD[Iterable[(Location, Temperature)]]): Iterable[(Location, Temperature)] = {
-    temperaturesRdd
-      .flatMap(locWithTemp => locWithTemp)
-      .groupByKey()
-      .aggregateByKey((0.0, 0))(
-        (acc, v) => (acc._1 + v.sum, acc._2 + v.size),
-        (v1, v2) => (v1._1 + v2._1, v1._2 + v2._2)
-      )
-      .mapValues(sum => sum._1 / sum._2)
-      .collect()
-  }
-
   /**
     * @param temperatures Known temperatures
     * @param normals A grid containing the “normal” temperatures
     * @return A grid containing the deviations compared to the normal temperatures
     */
   def deviation(temperatures: Iterable[(Location, Temperature)], normals: GridLocation => Temperature): GridLocation => Temperature = {
-//    System.gc()
-//    gridLoc => makeGrid(temperatures)(gridLoc) - normals(gridLoc)
-    ???
+    val selectedYearGrid = makeGrid(temperatures)
+    gridLoc => selectedYearGrid(gridLoc) - normals(gridLoc)
   }
 
 

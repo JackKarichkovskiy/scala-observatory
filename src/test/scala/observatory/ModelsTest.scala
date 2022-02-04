@@ -61,4 +61,13 @@ class ModelsTest extends AnyFunSuite {
     Assert.assertEquals(GridLocation(89, -180), result._2)
   }
 
+  test("check getGridSquare result for Location(-89.296875,179.296875)") {
+    val loc = Location(-89.296875, 179.296875)
+
+    val result = loc.getGridSquare()
+
+    Assert.assertEquals(GridLocation(-89, 179), result._1)
+    Assert.assertEquals(GridLocation(90, -180), result._2)
+  }
+
 }

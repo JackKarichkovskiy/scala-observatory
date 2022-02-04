@@ -82,7 +82,6 @@ object Interaction extends InteractionInterface {
                            yearlyData: Iterable[(Year, Data)],
                            generateImage: (Year, Tile, Data) => Unit
                          ): Unit = {
-    System.gc()
     println("generateTiles start")
     val computedTiles = allTilesForMap
     yearlyData.par

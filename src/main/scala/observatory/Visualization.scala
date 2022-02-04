@@ -18,8 +18,7 @@ object Visualization extends VisualizationInterface {
     * @return The predicted temperature at `location`
     */
   def predictTemperature(temperatures: Iterable[(Location, Temperature)], location: Location): Temperature = {
-//    println(s"predictTemperature start. Location: (${location.lat}, ${location.lon})")
-    val (weightedSumMean, weightedSum) = temperatures.map(locWithTemp => {
+    val (weightedSumMean, weightedSum) = temperatures.par.map(locWithTemp => {
       val distance = location.greatCircleDistance(locWithTemp._1)
       if(distance == 0.0) (locWithTemp._2, 0.0) else {
         val wix = 1 / Math.pow(distance, p)
@@ -32,28 +31,6 @@ object Visualization extends VisualizationInterface {
     })
 
     if (weightedSum == 0.0) weightedSumMean else weightedSumMean / weightedSum
-  }
-
-  def predictTemperatureOld(temperatures: Iterable[(Location, Temperature)], location: Location): Temperature = {
-    def wi(loc: Location): Double = {
-      1 / Math.pow(location.greatCircleDistance(loc), p)
-    }
-    val parTemperatures = temperatures.par
-    val locationsWithWix = parTemperatures.map(locTemp => (locTemp, locTemp._1.greatCircleDistance(location)))
-    val allDestinationsNotZero = locationsWithWix.forall(_._2 != 0)
-    if (allDestinationsNotZero) {
-      val (acc1, acc2) = parTemperatures.aggregate((0.0, 0.0))(
-        (acc: (Double, Double), nextLoc: (Location, Temperature)) => {
-          val wiX = wi(nextLoc._1)
-          (acc._1 + wiX * nextLoc._2, acc._2 + wiX)
-        },
-        (acc1: (Double, Double), acc2: (Double, Double)) => (acc1._1 + acc2._1, acc1._2 + acc2._2)
-      )
-
-      acc1 / acc2
-    } else {
-      locationsWithWix.find(_._2 == 0).get._1._2
-    }
   }
 
   /**
@@ -94,8 +71,6 @@ object Visualization extends VisualizationInterface {
     * @return A 360×180 image where each pixel shows the predicted temperature at its location
     */
   def visualize(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
-    System.gc()
-
     println("visualize start")
 
     def createPixel(pixelIndex: Int): Pixel = {
@@ -109,22 +84,6 @@ object Visualization extends VisualizationInterface {
     val pixels = (0 until imageSizeInPixels).par.map(createPixel).toArray
     Image(imageWidth, imageHeight, pixels)
   }
-
-  def visualizeOld(temperatures: Iterable[(Location, Temperature)], colors: Iterable[(Temperature, Color)]): Image = {
-    println("visualizeOld start")
-
-    def createPixel(pixelIndex: Int): Pixel = {
-      val (arrayX, arrayY) = (pixelIndex / imageWidth, pixelIndex % imageWidth)
-      val targetLoc = Location(imageHeight / 2 - arrayX, arrayY - imageWidth / 2)
-      val predictedTemperature = predictTemperatureOld(temperatures, targetLoc)
-      val interpolatedColor = interpolateColor(colors, predictedTemperature)
-      toPixel(interpolatedColor)
-    }
-
-    val pixels = (0 until imageSizeInPixels).par.map(createPixel).toArray
-    Image(imageWidth, imageHeight, pixels)
-  }
-
 
   private def toPixel(color: Color): Pixel = {
     color match {
